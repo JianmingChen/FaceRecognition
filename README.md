@@ -1,6 +1,6 @@
 # User Simple Selfie Register
 
-This is a SwifUI-Based iOS application designed to register users with a photo and display clinet details in a list view. The app includes login functionality, client list view with sorting and searching, and detailed client information with customizable statuses.
+This is a SwiftUI-Based iOS application designed to register users with a photo and display client details in a list view. The app includes login functionality, client list view with sorting and searching, detailed client information with customizable statuses, and a new face recognition feature for enhanced client filtering.
 ## Features
 - **Login Page**: User can log in with an email and password
 - **Client List View**: Displays a list of clients with their photo, name, and address. User can sort by first name, last name, or unit number and search by name or address.
@@ -10,6 +10,12 @@ This is a SwifUI-Based iOS application designed to register users with a photo a
 - **Status Update**: Allows users to set the status of each client, such as "Completed", "Refused", pr "Partial." Statues are updated locally and posted back to the server when feasible.
 
 - **Data Caching**: Client data is cached locally to prevent data loss and updated when possible
+
+- **Face Recognition Integration**: Uses face recognition to enhance client vefication and filtering. Automatically matches client selfies against stored data to streamline verification and reduce manual checks
+
+##Version Update
+- **Version 1.0**: Initial release with login functionality, client list view, client detail view, status updates, and data caching.
+- **Version 2.0**: Added face recognition functionality for enhanced client filtering and verification. Improved user experience and automated client verification process.
 
 ## Installation
 
@@ -32,12 +38,17 @@ open UserSimpleSelfieRegister
 3. **Sort and Search**: Use the sort option to sort clients by first name, last name, or unit number. Use the search bar to filter clients by name or address.
 4. **View Client Details**: Tap on a client in the list to view their details, including a larger photo and full address information.
 5. **Update Status**: In the detail view, set the client's status, which is then stored locally and posted back when possible.
+6. **Face Recognition Filtering**: The app uses face recognition to automatically filter and verify clients based on their stored selfies. This improves the accuracy and efficiency of client management.
 
 ## Acknowledgments (BCIT bachelor of science in computer science)
+**Version 1.0** Developer
 - Parker Chen (parkerchen1123@outlook.com)
 - Jerry Zhang (zhangzhe941020@yahoo.com)
 - Phil Teng (https://github.com/Phil-CST-BCIT)
-
+##
+**Version 2.0** Developer
+- Parker Chen (parkerchen1123@outlook.com)
+- Jerry Zhang (zhangzhe941020@yahoo.com) 
 
 ## License
 
