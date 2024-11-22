@@ -1,5 +1,6 @@
 import SwiftUI
 import FirebaseFirestore
+import FirebaseStorage
 
 // Global variable to hold the document ID
 var currentUserDocumentID: String?
@@ -9,6 +10,9 @@ struct ClientListView: View {
     @State private var clients: [User] = []
     @State private var searchText: String = ""
     @State private var selectedSortOption: SortOption = .firstName
+    @State private var showingFaceScanner = false
+    @State private var recognizedClientId: String?
+    @State private var capturedImage: UIImage?
 
     enum SortOption {
         case firstName, lastName, unitNumber
@@ -43,6 +47,29 @@ struct ClientListView: View {
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
                     .padding(.horizontal)
+
+                Button(action: {
+                    showingFaceScanner = true
+                }) {
+                    Label("Scan Face", systemImage: "faceid")
+                        .padding()
+                        .background(Color.blue.opacity(0.2))
+                        .cornerRadius(10)
+                }
+                .sheet(isPresented: $showingFaceScanner) {
+                    FaceCaptureView(capturedImage: $capturedImage) { success in
+                        if success, let image = capturedImage {
+                            FaceRecognitionManager.shared.matchFace(from: image) { clientId in
+                                DispatchQueue.main.async {
+                                    recognizedClientId = clientId
+                                    if clientId != nil {
+                                        searchText = clients.first { "\($0.id)" == clientId }?.firstName ?? ""
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // Sort Options
                 HStack {

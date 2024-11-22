@@ -8,6 +8,7 @@
 import SwiftUI
 import Firebase
 import FirebaseFirestore
+import FirebaseStorage
 
 struct RegistrationView: View {
     @State private var firstName: String = ""
@@ -19,6 +20,9 @@ struct RegistrationView: View {
     @State private var showingImagePicker = false
     @State private var profileImage: Image? = nil
     @State private var isEmailInvalid = false
+    @State private var capturedImage: UIImage?
+    @State private var showingFaceCapture = false
+    @State private var faceVerificationStatus: String?
 
     var body: some View {
         VStack(spacing: 20) {
@@ -49,6 +53,31 @@ struct RegistrationView: View {
             }
             .sheet(isPresented: $showingImagePicker) {
                 ImagePicker(selectedImage: $profileImage)
+            }
+            
+            Button(action: {
+                showingFaceCapture = true
+            }) {
+                Text("Capture Face ID")
+                    .fontWeight(.medium)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue.opacity(0.2))
+                    .foregroundColor(.blue)
+                    .cornerRadius(10)
+            }
+            .sheet(isPresented: $showingFaceCapture) {
+                FaceCaptureView(capturedImage: $capturedImage) { success in
+                    if success {
+                        verifyFace()
+                    }
+                }
+            }
+            
+            if let status = faceVerificationStatus {
+                Text(status)
+                    .foregroundColor(status.contains("Success") ? .green : .red)
+                    .padding(.top, 5)
             }
             
             // First Name Field
@@ -122,6 +151,11 @@ struct RegistrationView: View {
     }
     
     func registerUser() {
+        guard let faceImage = capturedImage else {
+            faceVerificationStatus = "Please capture face image first"
+            return
+        }
+        
         let db = Firestore.firestore()
         
         // Create User instance
@@ -155,12 +189,35 @@ struct RegistrationView: View {
                 print("User successfully registered: \(firstName), \(lastName)")
             }
         }
+        
+        // Save face image to Firebase Storage
+        if let imageData = faceImage.jpegData(compressionQuality: 0.8) {
+            let storage = Storage.storage()
+            let storageRef = storage.reference()
+            let imageRef = storageRef.child("faces/\(newUser.id.uuidString).jpg")
+            
+            imageRef.putData(imageData, metadata: nil) { metadata, error in
+                if let error = error {
+                    print("Error uploading face image: \(error)")
+                }
+            }
+        }
     }
     
     func isValidEmail(_ email: String) -> Bool {
         let emailFormat = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailFormat)
         return emailPredicate.evaluate(with: email)
+    }
+    
+    func verifyFace() {
+        guard let image = capturedImage else { return }
+        
+        FaceRecognitionManager.shared.encodeFace(from: image, for: email) { success in
+            DispatchQueue.main.async {
+                faceVerificationStatus = success ? "Face verification successful" : "Face verification failed"
+            }
+        }
     }
 }
 

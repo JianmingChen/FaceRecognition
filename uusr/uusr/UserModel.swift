@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 enum UserRole {
     case manager
@@ -21,9 +22,10 @@ class User: ObservableObject, Identifiable {
     @Published var lastName: String
     @Published var unitNumber: String?
     @Published var buildingName: String?
-    @Published var statusDictionary: [String: Bool] // Change status to a dictionary
+    @Published var statusDictionary: [String: Bool]
+    @Published var faceImage: UIImage?
 
-    init(email: String, password: String, role: UserRole, firstName: String, lastName: String, unitNumber: String?, buildingName: String?, statusDictionary: [String: Bool] = [:]) {
+    init(email: String, password: String, role: UserRole, firstName: String, lastName: String, unitNumber: String?, buildingName: String?, statusDictionary: [String: Bool] = [:], faceImage: UIImage? = nil) {
         self.email = email
         self.password = password
         self.role = role
@@ -32,5 +34,6 @@ class User: ObservableObject, Identifiable {
         self.unitNumber = unitNumber
         self.buildingName = buildingName
         self.statusDictionary = statusDictionary
+        self.faceImage = faceImage
     }
 }
