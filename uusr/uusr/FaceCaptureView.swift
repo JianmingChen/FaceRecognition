@@ -9,29 +9,39 @@ struct FaceCaptureView: View {
     
     var body: some View {
         ZStack {
-            CameraPreview(camera: camera)
-                .edgesIgnoringSafeArea(.all)
-            
-            VStack {
-                Spacer()
+            if camera.isSetupComplete {
+                CameraPreview(camera: camera)
+                    .edgesIgnoringSafeArea(.all)
                 
-                Button(action: {
-                    camera.capturePhoto { image in
-                        capturedImage = image
-                        onCapture(true)
-                        presentationMode.wrappedValue.dismiss()
+                VStack {
+                    Spacer()
+                    
+                    Button(action: {
+                        camera.capturePhoto { image in
+                            capturedImage = image
+                            onCapture(true)
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    }) {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 70, height: 70)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.black, lineWidth: 2)
+                                    .frame(width: 60, height: 60)
+                            )
                     }
-                }) {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 70, height: 70)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.black, lineWidth: 2)
-                                .frame(width: 60, height: 60)
-                        )
+                    .padding(.bottom, 30)
                 }
-                .padding(.bottom, 30)
+            } else {
+                if let error = camera.error {
+                    Text(error.localizedDescription)
+                        .foregroundColor(.red)
+                        .padding()
+                } else {
+                    ProgressView("Setting up camera...")
+                }
             }
         }
         .onAppear {
@@ -41,9 +51,12 @@ struct FaceCaptureView: View {
 }
 
 class CameraController: ObservableObject {
+    @Published var isSetupComplete = false
+    @Published var error: Error?
     var session: AVCaptureSession?
     private var output: AVCapturePhotoOutput?
     private var completion: ((UIImage?) -> Void)?
+    private var captureDelegate: PhotoCaptureDelegate?
     
     private class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         private let completion: (UIImage?) -> Void
@@ -62,40 +75,62 @@ class CameraController: ObservableObject {
         }
     }
     
-    private var captureDelegate: PhotoCaptureDelegate?
-    
     func checkPermissions() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            setupCamera()
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                self?.setupCamera()
+            }
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 if granted {
-                    DispatchQueue.main.async {
+                    DispatchQueue.global(qos: .userInitiated).async {
                         self?.setupCamera()
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        self?.error = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Camera access denied"])
                     }
                 }
             }
         default:
-            break
+            DispatchQueue.main.async {
+                self.error = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Camera access denied"])
+            }
         }
     }
     
     private func setupCamera() {
-        let session = AVCaptureSession()
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
-              let input = try? AVCaptureDeviceInput(device: device) else { return }
-        
-        let output = AVCapturePhotoOutput()
-        
-        if session.canAddInput(input) && session.canAddOutput(output) {
-            session.addInput(input)
-            session.addOutput(output)
-            self.session = session
-            self.output = output
+        do {
+            let session = AVCaptureSession()
+            session.beginConfiguration()
             
-            DispatchQueue.global(qos: .background).async {
-                session.startRunning()
+            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) else {
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No front camera available"])
+            }
+            
+            let input = try AVCaptureDeviceInput(device: device)
+            let output = AVCapturePhotoOutput()
+            
+            if session.canAddInput(input) && session.canAddOutput(output) {
+                session.addInput(input)
+                session.addOutput(output)
+                session.commitConfiguration()
+                
+                self.session = session
+                self.output = output
+                
+                DispatchQueue.main.async {
+                    self.isSetupComplete = true
+                }
+                
+                DispatchQueue.global(qos: .userInitiated).async {
+                    session.startRunning()
+                }
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.error = error
             }
         }
     }
