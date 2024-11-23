@@ -1,0 +1,19 @@
+Proposal: Face Recognition Integration for Client Filtering 
+
+Group: Chen, Parker and Zhang, Jerry
+
+Overview: Extend the "UserSimpleSelfieRegister" project by adding face recognition to enhance client verification and filtering.
+
+Objectives:
+
+Integrate Face Recognition: Use libraries like face_recognition or OpenCV to identify and match client selfies against stored data.
+Streamline Verification: Automate client filtering based on real-time recognition, reducing manual checks.
+Enhance User Experience: Provide secure and efficient client management.
+Approach:
+
+Encode Client Images: Pre-process and encode stored images for efficient matching.
+Develop Recognition Pipeline: Implement a system to capture, encode, and match input selfies.
+UI Enhancements: Display recognition results in the app interface.
+Outcomes: Improved accuracy, automated verification, and better security. Privacy measures will be in place to protect client data.
+
+Conclusion: This addition will automate and improve client filtering, boosting both efficiency and reliability.

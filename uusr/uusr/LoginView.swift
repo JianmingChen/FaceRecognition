@@ -7,6 +7,8 @@ struct LoginView: View {
     @State private var password: String = ""
     @State private var isLoginFailed = false
     @State private var showRegistration = false
+    @State private var showingFaceScanner = false
+    @State private var capturedImage: UIImage?
     @EnvironmentObject var userViewModel: UserViewModel
 
     var body: some View {
@@ -50,6 +52,26 @@ struct LoginView: View {
                 Text("Invalid email or password")
                     .foregroundColor(.red)
                     .padding(.top, 10)
+            }
+            
+            // Face Sign-In Button
+            Button(action: {
+                showingFaceScanner.toggle()
+            }) {
+                Label("Face Sign-In", systemImage: "faceid")
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue.opacity(0.2))
+                    .foregroundColor(.blue)
+                    .cornerRadius(10)
+            }
+            .sheet(isPresented: $showingFaceScanner) {
+                FaceCaptureView(capturedImage: $capturedImage) { success in
+                    if success, let image = capturedImage {
+                        authenticateWithFace(image: image)
+                    }
+                }
             }
             
             // Register Button
@@ -99,10 +121,58 @@ struct LoginView: View {
             }
         }
     }
-}
-
-struct LoginView_Previews: PreviewProvider {
-    static var previews: some View {
-        LoginView().environmentObject(UserViewModel())
+    
+    func authenticateWithFace(image: UIImage) {
+        let db = Firestore.firestore()
+        
+        db.collection("users").getDocuments { (querySnapshot, error) in
+            if let error = error {
+                print("Error fetching users: \(error)")
+                self.isLoginFailed = true
+                return
+            }
+            
+            guard let documents = querySnapshot?.documents else {
+                print("No users found.")
+                self.isLoginFailed = true
+                return
+            }
+            
+            // Load stored face encodings
+            var bestMatch: String?
+            var highestSimilarity: Float = 0
+            
+            FaceRecognitionManager.shared.encodeFace(from: image, for: "tempUser") { success, capturedEncoding in
+                guard success, let capturedEncoding = capturedEncoding else {
+                    print("Failed to encode face.")
+                    self.isLoginFailed = true
+                    return
+                }
+                
+                // Compare captured face encoding with stored encodings
+                for document in documents {
+                    let data = document.data()
+                    if let storedEncoding = data["faceEncoding"] as? [[String: CGFloat]] {
+                        let storedPoints = storedEncoding.map { CGPoint(x: $0["x"] ?? 0, y: $0["y"] ?? 0) }
+                        let similarity = FaceRecognitionManager.shared.calculateSimilarity(points1: capturedEncoding, points2: storedPoints)
+                        
+                        if similarity > highestSimilarity {
+                            highestSimilarity = similarity
+                            bestMatch = document.documentID
+                        }
+                    }
+                }
+                
+                // Check if the best match meets the similarity threshold
+                if let matchedUserId = bestMatch, highestSimilarity > 0.8 {
+                    print("Face matched with user ID: \(matchedUserId)")
+                    self.isLoginFailed = false
+                    userViewModel.isLoggedIn = true // Update state to show ClientListView
+                } else {
+                    print("No face match found.")
+                    self.isLoginFailed = true
+                }
+            }
+        }
     }
 }
