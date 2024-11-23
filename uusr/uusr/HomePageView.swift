@@ -8,14 +8,7 @@ import SwiftUI
 struct HomePageView: View {
     @State private var searchText: String = ""
     @State private var sortAscending: Bool = true
-    
-    // Sample user data, replace with actual data as needed
-    @State private var users = [
-        User(email: "admin@example.com", password: "admin123", role: .manager, firstName: "Alice", lastName: "Smith", unitNumber: nil, buildingName: nil),
-        User(email: "user@example.com", password: "user123", role: .individual, firstName: "Bob", lastName: "Johnson", unitNumber: nil, buildingName: nil),
-        User(email: "user2@example.com", password: "user123", role: .individual, firstName: "Charlie", lastName: "Brown", unitNumber: nil, buildingName: nil)
-    ]
-    
+
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading) {
@@ -33,13 +26,12 @@ struct HomePageView: View {
                     .cornerRadius(10)
                     .padding([.leading, .trailing])
 
-                // Sort button
+                // Sort button (placeholder action)
                 HStack {
-                    Text("Sort by First Name")
+                    Text("Sort")
                         .font(.subheadline)
                     Button(action: {
                         sortAscending.toggle()
-                        users.sort { sortAscending ? $0.firstName < $1.firstName : $0.firstName > $1.firstName }
                     }) {
                         Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
                             .foregroundColor(.blue)
@@ -47,14 +39,13 @@ struct HomePageView: View {
                 }
                 .padding([.leading, .trailing])
                 
-                // User list
+                // Placeholder content
                 ScrollView {
                     VStack(spacing: 10) {
-                        ForEach(filteredUsers, id: \.id) { user in
-                            NavigationLink(destination: PersonalDetailView(user: user)) {
-                                UserRowView(user: user)
-                            }
-                        }
+                        Text("No data available")
+                            .foregroundColor(.gray)
+                            .font(.subheadline)
+                            .padding()
                     }
                     .padding([.leading, .trailing])
                 }
@@ -62,44 +53,6 @@ struct HomePageView: View {
             .navigationBarHidden(true)
             .padding()
         }
-    }
-    
-    // Filtered user data
-    var filteredUsers: [User] {
-        users.filter { user in
-            searchText.isEmpty || user.firstName.lowercased().contains(searchText.lowercased())
-        }
-    }
-}
-
-// User information for each row
-struct UserRowView: View {
-    @ObservedObject var user: User
-    
-    var body: some View {
-        HStack {
-            Circle()
-                .fill(Color.blue.opacity(0.2))
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Text(String(user.firstName.prefix(1)))
-                        .fontWeight(.bold)
-                        .foregroundColor(.blue)
-                )
-            
-            VStack(alignment: .leading) {
-                Text(user.firstName)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                Text(user.lastName)
-                    .foregroundColor(.gray)
-            }
-            
-            Spacer()
-        }
-        .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(10)
     }
 }
 
