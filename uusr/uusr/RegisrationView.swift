@@ -1,7 +1,6 @@
 import SwiftUI
-import Firebase
-import FirebaseFirestore
 import FirebaseStorage
+
 
 struct RegistrationView: View {
     @Environment(\.presentationMode) var presentationMode
@@ -29,7 +28,6 @@ struct RegistrationView: View {
                 
                 // Profile Image and Face Capture Section
                 HStack(spacing: 20) {
-                    // Profile Image Section
                     VStack {
                         if profileImage != nil {
                             profileImage?
@@ -53,7 +51,6 @@ struct RegistrationView: View {
                         ImagePicker(selectedImage: $profileImage)
                     }
                     
-                    // Capture Face ID Section
                     Button(action: {
                         showingFaceCapture = true
                     }) {
@@ -88,19 +85,16 @@ struct RegistrationView: View {
                         .padding(.top, 5)
                 }
                 
-                // First Name Field
                 TextField("First Name", text: $firstName)
                     .padding()
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
                 
-                // Last Name Field
                 TextField("Last Name", text: $lastName)
                     .padding()
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
                 
-                // Email Field
                 TextField("Email", text: $email)
                     .padding()
                     .background(Color(.secondarySystemBackground))
@@ -118,28 +112,24 @@ struct RegistrationView: View {
                         .padding(.bottom, 5)
                 }
                 
-                // Password Field
                 SecureField("Password", text: $password)
                     .padding()
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
                 
-                // Unit Number Field
                 TextField("Unit Number", text: $unitNumber)
                     .padding()
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
                 
-                // Building Name Field
                 TextField("Building Name", text: $buildingName)
                     .padding()
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
                 
-                // Register Button
                 Button(action: {
                     if !isEmailInvalid {
-                        registerUser()
+                        handleRegistration()
                     }
                 }) {
                     Text("Register")
@@ -167,79 +157,34 @@ struct RegistrationView: View {
             }
         }
     }
-    
-    func registerUser() {
+
+    func handleRegistration() {
         guard let faceImage = capturedImage else {
             faceVerificationStatus = "Please capture face image first"
             return
         }
         
-        let db = Firestore.firestore()
-        
-        // Perform face encoding and save to Firebase
-        FaceRecognitionManager.shared.encodeFace(from: faceImage, for: UUID().uuidString) { success, faceEncoding in
+        FaceRecognitionManager.shared.encodeFace(from: faceImage, for: email) { success, faceEncoding in
             DispatchQueue.main.async {
                 if success, let faceEncoding = faceEncoding {
-                    // Split face encoding into chunks of up to 30 elements
-                    let maxBatchSize = 30
-                    let faceEncodingChunks = stride(from: 0, to: faceEncoding.count, by: maxBatchSize).map {
-                        Array(faceEncoding[$0..<min($0 + maxBatchSize, faceEncoding.count)])
-                    }
+                    let newUser = User(
+                        email: email,
+                        password: password,
+                        role: .individual,
+                        firstName: firstName,
+                        lastName: lastName,
+                        unitNumber: unitNumber.isEmpty ? nil : unitNumber,
+                        buildingName: buildingName.isEmpty ? nil : buildingName
+                    )
                     
-                    var duplicateFound = false
-                    let dispatchGroup = DispatchGroup()
-                    
-                    for chunk in faceEncodingChunks {
-                        dispatchGroup.enter()
-                        db.collection("users").whereField("faceEncoding", arrayContainsAny: chunk.map { ["x": $0.x, "y": $0.y] }).getDocuments { snapshot, error in
-                            if let error = error {
-                                print("Error checking face encoding: \(error)")
-                            } else if let snapshot = snapshot, !snapshot.isEmpty {
-                                duplicateFound = true
-                            }
-                            dispatchGroup.leave()
-                        }
-                    }
-                    
-                    dispatchGroup.notify(queue: .main) {
-                        if duplicateFound {
-                            faceVerificationStatus = "Face already registered. Cannot register again with the same face."
+                    FireBaseServer.shared.registerUser(user: newUser, faceEncoding: faceEncoding.map { ["x": $0.x, "y": $0.y] }) { error in
+                        if let error = error {
+                            print("Error registering user: \(error.localizedDescription)")
+                            faceVerificationStatus = "Failed to register user"
                         } else {
-                            // Proceed with registration if no duplicates are found
-                            let newUser = User(
-                                email: email,
-                                password: password,
-                                role: .individual,
-                                firstName: firstName,
-                                lastName: lastName,
-                                unitNumber: unitNumber.isEmpty ? nil : unitNumber,
-                                buildingName: buildingName.isEmpty ? nil : buildingName
-                            )
-                            
-                            // Convert User instance to dictionary for Firestore
-                            var userData: [String: Any] = [
-                                "id": newUser.id.uuidString,
-                                "firstName": newUser.firstName,
-                                "lastName": newUser.lastName,
-                                "email": newUser.email,
-                                "password": newUser.password,
-                                "unitNumber": newUser.unitNumber ?? "",
-                                "buildingName": newUser.buildingName ?? "",
-                                "role": newUser.role == .manager ? "manager" : "individual",
-                                "status": Status.allCases.reduce(into: [String: Bool]()) { $0[$1.rawValue] = false },
-                                "faceEncoding": faceEncoding.map { ["x": $0.x, "y": $0.y] }
-                            ]
-                            
-                            db.collection("users").document(newUser.id.uuidString).setData(userData) { error in
-                                if let error = error {
-                                    print("Error adding document: \(error)")
-                                    faceVerificationStatus = "Failed to register user"
-                                } else {
-                                    faceVerificationStatus = "User successfully registered with face data"
-                                    saveFaceToStorage(faceImage: faceImage, userId: newUser.id.uuidString)
-                                    showSuccessAlert = true // Show success alert
-                                }
-                            }
+                            faceVerificationStatus = "User successfully registered"
+                            saveFaceToStorage(faceImage: faceImage, userId: newUser.id.uuidString)
+                            showSuccessAlert = true
                         }
                     }
                 } else {
@@ -264,13 +209,13 @@ struct RegistrationView: View {
             }
         }
     }
-    
+
     func isValidEmail(_ email: String) -> Bool {
         let emailFormat = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailFormat)
         return emailPredicate.evaluate(with: email)
     }
-    
+
     func verifyFace() {
         guard let image = capturedImage else {
             faceVerificationStatus = "No captured image to verify"

@@ -1,6 +1,4 @@
 import SwiftUI
-import Firebase
-import FirebaseFirestore
 
 struct LoginView: View {
     @State private var email: String = ""
@@ -92,27 +90,26 @@ struct LoginView: View {
     
     // Authenticate user using email and password
     func authenticateUser() {
-        let db = Firestore.firestore()
-        db.collection("users").whereField("email", isEqualTo: email).getDocuments { (querySnapshot, error) in
+        FireBaseServer.shared.fetchClients { (fetchedClients, error) in
             if let error = error {
                 print("Error fetching user: \(error.localizedDescription)")
                 self.isLoginFailed = true
                 return
             }
             
-            guard let documents = querySnapshot?.documents, let document = documents.first else {
+            guard let clients = fetchedClients else {
                 print("No matching documents found.")
                 self.isLoginFailed = true
                 return
             }
             
-            let data = document.data()
-            if let storedPassword = data["password"] as? String, storedPassword == self.password {
+            // Check for matching email and password
+            if let user = clients.first(where: { $0.email == self.email && $0.password == self.password }) {
                 print("Login successful for email: \(email)")
                 self.isLoginFailed = false
                 userViewModel.isLoggedIn = true
             } else {
-                print("Incorrect password for email: \(email)")
+                print("Incorrect email or password for email: \(email)")
                 self.isLoginFailed = true
             }
         }
@@ -120,15 +117,14 @@ struct LoginView: View {
     
     // Authenticate user using face recognition
     func authenticateWithFace(image: UIImage) {
-        let db = Firestore.firestore()
-        db.collection("users").getDocuments { (querySnapshot, error) in
+        FireBaseServer.shared.fetchClients { (fetchedClients, error) in
             if let error = error {
                 print("Error fetching users: \(error.localizedDescription)")
                 self.isLoginFailed = true
                 return
             }
             
-            guard let documents = querySnapshot?.documents else {
+            guard let clients = fetchedClients else {
                 print("No users found.")
                 self.isLoginFailed = true
                 return
@@ -145,15 +141,14 @@ struct LoginView: View {
                 var highestSimilarity: Float = 0
                 
                 // Compare captured face encoding with stored encodings
-                for document in documents {
-                    let data = document.data()
-                    if let storedEncoding = data["faceEncoding"] as? [[String: CGFloat]] {
+                for user in clients {
+                    if let storedEncoding = user.statusDictionary["faceEncoding"] as? [[String: CGFloat]] {
                         let storedPoints = storedEncoding.map { CGPoint(x: $0["x"] ?? 0, y: $0["y"] ?? 0) }
                         let similarity = FaceRecognitionManager.shared.calculateSimilarity(points1: capturedEncoding, points2: storedPoints)
                         
                         if similarity > highestSimilarity {
                             highestSimilarity = similarity
-                            bestMatch = document.documentID
+                            bestMatch = user.id.uuidString // Assuming user has an id property
                         }
                     }
                 }

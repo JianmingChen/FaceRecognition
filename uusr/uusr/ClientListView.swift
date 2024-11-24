@@ -1,5 +1,4 @@
 import SwiftUI
-import FirebaseFirestore
 
 // Global variable to hold the document ID
 var currentUserDocumentID: String?
@@ -81,47 +80,18 @@ struct ClientListView: View {
         }
     }
 
-    // Fetch all clients from Firestore
+    // Fetch all clients from Firestore using FireBaseServer
     func fetchClients() {
-        let db = Firestore.firestore()
-        db.collection("users").getDocuments { (querySnapshot, error) in
+        FireBaseServer.shared.fetchClients { (fetchedClients, error) in
             if let error = error {
                 print("Error fetching clients: \(error)")
                 return
             }
-            
-            guard let documents = querySnapshot?.documents else {
-                return
-            }
-            
-            self.clients = documents.compactMap { document in
-                let data = document.data()
-                let userId = document.documentID // Get the user document ID
-                print("Fetched user ID: \(userId)") // Print the user ID to the terminal
-                
-                // Assign the document ID to the global variable
-                currentUserDocumentID = userId
-                
-                // Read status as a dictionary
-                let statusData = data["status"] as? [String: Bool] ?? [:]
-                
-                // Create a User object with the status dictionary
-                return User(
-                    email: data["email"] as? String ?? "",
-                    password: data["password"] as? String ?? "",
-                    role: (data["role"] as? String == "manager") ? .manager : .individual,
-                    firstName: data["firstName"] as? String ?? "",
-                    lastName: data["lastName"] as? String ?? "",
-                    unitNumber: data["unitNumber"] as? String,
-                    buildingName: data["buildingName"] as? String,
-                    statusDictionary: statusData // Pass status dictionary from Firestore
-                )
-            }
+            self.clients = fetchedClients ?? []
             sortClients()
             print("Fetched \(self.clients.count) clients.")
         }
     }
-
 
     // Sorting clients explicitly
     func sortClients() {
@@ -234,19 +204,8 @@ struct ClientRowView: View {
         // Save status locally
         saveStatusLocally(for: user)
 
-        // Push the updated status to Firestore
-        updateStatusInFirestore(for: user)
-    }
-
-    func saveStatusLocally(for user: User) {
-        UserDefaults.standard.set(user.statusDictionary, forKey: "status_\(currentUserDocumentID ?? "N/A")")
-    }
-
-    func updateStatusInFirestore(for user: User) {
-        let db = Firestore.firestore()
-        db.collection("users").document(currentUserDocumentID ?? "").updateData([
-            "status": user.statusDictionary
-        ]) { error in
+        // Push the updated status to Firestore using FireBaseServer
+        FireBaseServer.shared.updateStatus(for: currentUserDocumentID ?? "", status: user.statusDictionary) { error in
             if let error = error {
                 print("Error updating status: \(error)")
             } else {
@@ -254,20 +213,8 @@ struct ClientRowView: View {
             }
         }
     }
-    func validateSession(completion: @escaping (Bool) -> Void) {
-        guard let userId = currentUserDocumentID else {
-            completion(false)
-            return
-        }
 
-        let db = Firestore.firestore()
-        db.collection("users").document(userId).getDocument { document, error in
-            if let document = document, document.exists {
-                completion(true) // Valid session
-            } else {
-                completion(false) // Invalid session
-            }
-        }
+    func saveStatusLocally(for user: User) {
+        UserDefaults.standard.set(user.statusDictionary, forKey: "status_\(currentUserDocumentID ?? "N/A")")
     }
-
 }

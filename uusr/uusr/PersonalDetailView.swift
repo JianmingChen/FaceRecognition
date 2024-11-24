@@ -1,5 +1,4 @@
 import SwiftUI
-import FirebaseFirestore
 
 struct PersonalDetailView: View {
     @ObservedObject var user: User
@@ -81,7 +80,7 @@ struct PersonalDetailView: View {
                                 user.statusDictionary[status.rawValue] = isSelected
                                 // Cache the updated status locally
                                 saveStatusLocally(for: user)
-                                // Push to Firestore
+                                // Push to Firestore using FireBaseServer
                                 updateStatusInFirestore(for: user)
                             }
                         )) {
@@ -107,14 +106,11 @@ struct PersonalDetailView: View {
     }
 
     func updateStatusInFirestore(for user: User) {
-        let db = Firestore.firestore()
-        db.collection("users").document(currentUserDocumentID ?? "").updateData([
-            "status": user.statusDictionary
-        ]) { error in
+        FireBaseServer.shared.updateStatus(for: user.id.uuidString, status: user.statusDictionary) { error in
             if let error = error {
                 print("Error updating status: \(error)")
             } else {
-                print("Status successfully updated for user: \(currentUserDocumentID ?? "N/A")")
+                print("Status successfully updated for user: \(user.id.uuidString)")
             }
         }
     }
