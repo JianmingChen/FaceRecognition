@@ -1,6 +1,4 @@
 import SwiftUI
-import FirebaseStorage
-
 
 struct RegistrationView: View {
     @Environment(\.presentationMode) var presentationMode
@@ -16,7 +14,7 @@ struct RegistrationView: View {
     @State private var capturedImage: UIImage?
     @State private var showingFaceCapture = false
     @State private var faceVerificationStatus: String?
-    @State private var showSuccessAlert = false // State for showing success alert
+    @State private var showSuccessAlert = false
 
     var body: some View {
         ScrollView {
@@ -182,29 +180,19 @@ struct RegistrationView: View {
                             print("Error registering user: \(error.localizedDescription)")
                             faceVerificationStatus = "Failed to register user"
                         } else {
-                            faceVerificationStatus = "User successfully registered"
-                            saveFaceToStorage(faceImage: faceImage, userId: newUser.id.uuidString)
-                            showSuccessAlert = true
+                            FireBaseServer.shared.uploadFaceImage(faceImage: faceImage, userId: newUser.id.uuidString) { error in
+                                if let error = error {
+                                    print("Error uploading face image: \(error.localizedDescription)")
+                                } else {
+                                    print("Face image successfully uploaded for user \(newUser.id.uuidString)")
+                                    faceVerificationStatus = "User successfully registered"
+                                    showSuccessAlert = true
+                                }
+                            }
                         }
                     }
                 } else {
                     faceVerificationStatus = "Face encoding failed. Please try again."
-                }
-            }
-        }
-    }
-
-    func saveFaceToStorage(faceImage: UIImage, userId: String) {
-        if let imageData = faceImage.jpegData(compressionQuality: 0.8) {
-            let storage = Storage.storage()
-            let storageRef = storage.reference()
-            let imageRef = storageRef.child("faces/\(userId).jpg")
-            
-            imageRef.putData(imageData, metadata: nil) { metadata, error in
-                if let error = error {
-                    print("Error uploading face image: \(error)")
-                } else {
-                    print("Face image successfully uploaded for user \(userId)")
                 }
             }
         }
