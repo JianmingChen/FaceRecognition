@@ -90,11 +90,12 @@ struct LoginView: View {
         .padding()
     }
     
+    // Authenticate user using email and password
     func authenticateUser() {
         let db = Firestore.firestore()
         db.collection("users").whereField("email", isEqualTo: email).getDocuments { (querySnapshot, error) in
             if let error = error {
-                print("Error fetching user: \(error)")
+                print("Error fetching user: \(error.localizedDescription)")
                 self.isLoginFailed = true
                 return
             }
@@ -106,28 +107,23 @@ struct LoginView: View {
             }
             
             let data = document.data()
-            if let storedPassword = data["password"] as? String {
-                if storedPassword == self.password {
-                    print("Login successful. Changing isLoggedIn state to true.")
-                    self.isLoginFailed = false
-                    userViewModel.isLoggedIn = true // Update state to show ClientListView
-                } else {
-                    print("Incorrect password.")
-                    self.isLoginFailed = true
-                }
+            if let storedPassword = data["password"] as? String, storedPassword == self.password {
+                print("Login successful for email: \(email)")
+                self.isLoginFailed = false
+                userViewModel.isLoggedIn = true
             } else {
-                print("Password data missing.")
+                print("Incorrect password for email: \(email)")
                 self.isLoginFailed = true
             }
         }
     }
     
+    // Authenticate user using face recognition
     func authenticateWithFace(image: UIImage) {
         let db = Firestore.firestore()
-        
         db.collection("users").getDocuments { (querySnapshot, error) in
             if let error = error {
-                print("Error fetching users: \(error)")
+                print("Error fetching users: \(error.localizedDescription)")
                 self.isLoginFailed = true
                 return
             }
@@ -138,16 +134,15 @@ struct LoginView: View {
                 return
             }
             
-            // Load stored face encodings
-            var bestMatch: String?
-            var highestSimilarity: Float = 0
-            
             FaceRecognitionManager.shared.encodeFace(from: image, for: "tempUser") { success, capturedEncoding in
                 guard success, let capturedEncoding = capturedEncoding else {
                     print("Failed to encode face.")
                     self.isLoginFailed = true
                     return
                 }
+                
+                var bestMatch: String?
+                var highestSimilarity: Float = 0
                 
                 // Compare captured face encoding with stored encodings
                 for document in documents {
@@ -164,13 +159,15 @@ struct LoginView: View {
                 }
                 
                 // Check if the best match meets the similarity threshold
-                if let matchedUserId = bestMatch, highestSimilarity > 0.8 {
-                    print("Face matched with user ID: \(matchedUserId)")
-                    self.isLoginFailed = false
-                    userViewModel.isLoggedIn = true // Update state to show ClientListView
-                } else {
-                    print("No face match found.")
-                    self.isLoginFailed = true
+                DispatchQueue.main.async {
+                    if let matchedUserId = bestMatch, highestSimilarity > 0.8 {
+                        print("Face matched with user ID: \(matchedUserId), Similarity: \(highestSimilarity)")
+                        self.isLoginFailed = false
+                        userViewModel.isLoggedIn = true
+                    } else {
+                        print("No face match found.")
+                        self.isLoginFailed = true
+                    }
                 }
             }
         }
