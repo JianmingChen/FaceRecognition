@@ -1,10 +1,3 @@
-//
-//  Register.swift
-//  uusr
-//
-//  Created by Jianming Chen on 2024-11-05.
-//
-
 import SwiftUI
 import Firebase
 import FirebaseFirestore
@@ -24,6 +17,7 @@ struct RegistrationView: View {
     @State private var capturedImage: UIImage?
     @State private var showingFaceCapture = false
     @State private var faceVerificationStatus: String?
+    @State private var showSuccessAlert = false // State for showing success alert
 
     var body: some View {
         ScrollView {
@@ -162,107 +156,114 @@ struct RegistrationView: View {
                 Spacer()
             }
             .padding()
+            .alert(isPresented: $showSuccessAlert) { // Show success alert
+                Alert(
+                    title: Text("Registration Successful"),
+                    message: Text("Your account has been successfully created."),
+                    dismissButton: .default(Text("OK")) {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                )
+            }
         }
     }
     
-func registerUser() {
-    guard let faceImage = capturedImage else {
-        faceVerificationStatus = "Please capture face image first"
-        return
-    }
-    
-    let db = Firestore.firestore()
-    
-    // Perform face encoding and save to Firebase
-    FaceRecognitionManager.shared.encodeFace(from: faceImage, for: UUID().uuidString) { success, faceEncoding in
-        DispatchQueue.main.async {
-            if success, let faceEncoding = faceEncoding {
-                // Split face encoding into chunks of up to 30 elements
-                let maxBatchSize = 30
-                let faceEncodingChunks = stride(from: 0, to: faceEncoding.count, by: maxBatchSize).map {
-                    Array(faceEncoding[$0..<min($0 + maxBatchSize, faceEncoding.count)])
-                }
-                
-                var duplicateFound = false
-                let dispatchGroup = DispatchGroup()
-                
-                for chunk in faceEncodingChunks {
-                    dispatchGroup.enter()
-                    db.collection("users").whereField("faceEncoding", arrayContainsAny: chunk.map { ["x": $0.x, "y": $0.y] }).getDocuments { snapshot, error in
-                        if let error = error {
-                            print("Error checking face encoding: \(error)")
-                        } else if let snapshot = snapshot, !snapshot.isEmpty {
-                            duplicateFound = true
-                        }
-                        dispatchGroup.leave()
+    func registerUser() {
+        guard let faceImage = capturedImage else {
+            faceVerificationStatus = "Please capture face image first"
+            return
+        }
+        
+        let db = Firestore.firestore()
+        
+        // Perform face encoding and save to Firebase
+        FaceRecognitionManager.shared.encodeFace(from: faceImage, for: UUID().uuidString) { success, faceEncoding in
+            DispatchQueue.main.async {
+                if success, let faceEncoding = faceEncoding {
+                    // Split face encoding into chunks of up to 30 elements
+                    let maxBatchSize = 30
+                    let faceEncodingChunks = stride(from: 0, to: faceEncoding.count, by: maxBatchSize).map {
+                        Array(faceEncoding[$0..<min($0 + maxBatchSize, faceEncoding.count)])
                     }
-                }
-                
-                dispatchGroup.notify(queue: .main) {
-                    if duplicateFound {
-                        faceVerificationStatus = "Face already registered. Cannot register again with the same face."
-                    } else {
-                        // Proceed with registration if no duplicates are found
-                        let newUser = User(
-                            email: email,
-                            password: password,
-                            role: .individual,
-                            firstName: firstName,
-                            lastName: lastName,
-                            unitNumber: unitNumber.isEmpty ? nil : unitNumber,
-                            buildingName: buildingName.isEmpty ? nil : buildingName
-                        )
-                        
-                        // Convert User instance to dictionary for Firestore
-                        var userData: [String: Any] = [
-                            "id": newUser.id.uuidString,
-                            "firstName": newUser.firstName,
-                            "lastName": newUser.lastName,
-                            "email": newUser.email,
-                            "password": newUser.password,
-                            "unitNumber": newUser.unitNumber ?? "",
-                            "buildingName": newUser.buildingName ?? "",
-                            "role": newUser.role == .manager ? "manager" : "individual",
-                            "status": Status.allCases.reduce(into: [String: Bool]()) { $0[$1.rawValue] = false },
-                            "faceEncoding": faceEncoding.map { ["x": $0.x, "y": $0.y] }
-                        ]
-                        
-                        db.collection("users").document(newUser.id.uuidString).setData(userData) { error in
+                    
+                    var duplicateFound = false
+                    let dispatchGroup = DispatchGroup()
+                    
+                    for chunk in faceEncodingChunks {
+                        dispatchGroup.enter()
+                        db.collection("users").whereField("faceEncoding", arrayContainsAny: chunk.map { ["x": $0.x, "y": $0.y] }).getDocuments { snapshot, error in
                             if let error = error {
-                                print("Error adding document: \(error)")
-                                faceVerificationStatus = "Failed to register user"
-                            } else {
-                                faceVerificationStatus = "User successfully registered with face data"
-                                saveFaceToStorage(faceImage: faceImage, userId: newUser.id.uuidString)
-                                // Close the page after successful registration
-                                presentationMode.wrappedValue.dismiss()
+                                print("Error checking face encoding: \(error)")
+                            } else if let snapshot = snapshot, !snapshot.isEmpty {
+                                duplicateFound = true
+                            }
+                            dispatchGroup.leave()
+                        }
+                    }
+                    
+                    dispatchGroup.notify(queue: .main) {
+                        if duplicateFound {
+                            faceVerificationStatus = "Face already registered. Cannot register again with the same face."
+                        } else {
+                            // Proceed with registration if no duplicates are found
+                            let newUser = User(
+                                email: email,
+                                password: password,
+                                role: .individual,
+                                firstName: firstName,
+                                lastName: lastName,
+                                unitNumber: unitNumber.isEmpty ? nil : unitNumber,
+                                buildingName: buildingName.isEmpty ? nil : buildingName
+                            )
+                            
+                            // Convert User instance to dictionary for Firestore
+                            var userData: [String: Any] = [
+                                "id": newUser.id.uuidString,
+                                "firstName": newUser.firstName,
+                                "lastName": newUser.lastName,
+                                "email": newUser.email,
+                                "password": newUser.password,
+                                "unitNumber": newUser.unitNumber ?? "",
+                                "buildingName": newUser.buildingName ?? "",
+                                "role": newUser.role == .manager ? "manager" : "individual",
+                                "status": Status.allCases.reduce(into: [String: Bool]()) { $0[$1.rawValue] = false },
+                                "faceEncoding": faceEncoding.map { ["x": $0.x, "y": $0.y] }
+                            ]
+                            
+                            db.collection("users").document(newUser.id.uuidString).setData(userData) { error in
+                                if let error = error {
+                                    print("Error adding document: \(error)")
+                                    faceVerificationStatus = "Failed to register user"
+                                } else {
+                                    faceVerificationStatus = "User successfully registered with face data"
+                                    saveFaceToStorage(faceImage: faceImage, userId: newUser.id.uuidString)
+                                    showSuccessAlert = true // Show success alert
+                                }
                             }
                         }
                     }
+                } else {
+                    faceVerificationStatus = "Face encoding failed. Please try again."
                 }
-            } else {
-                faceVerificationStatus = "Face encoding failed. Please try again."
             }
         }
     }
-}
 
-func saveFaceToStorage(faceImage: UIImage, userId: String) {
-    if let imageData = faceImage.jpegData(compressionQuality: 0.8) {
-        let storage = Storage.storage()
-        let storageRef = storage.reference()
-        let imageRef = storageRef.child("faces/\(userId).jpg")
-        
-        imageRef.putData(imageData, metadata: nil) { metadata, error in
-            if let error = error {
-                print("Error uploading face image: \(error)")
-            } else {
-                print("Face image successfully uploaded for user \(userId)")
+    func saveFaceToStorage(faceImage: UIImage, userId: String) {
+        if let imageData = faceImage.jpegData(compressionQuality: 0.8) {
+            let storage = Storage.storage()
+            let storageRef = storage.reference()
+            let imageRef = storageRef.child("faces/\(userId).jpg")
+            
+            imageRef.putData(imageData, metadata: nil) { metadata, error in
+                if let error = error {
+                    print("Error uploading face image: \(error)")
+                } else {
+                    print("Face image successfully uploaded for user \(userId)")
+                }
             }
         }
     }
-}
-
     
     func isValidEmail(_ email: String) -> Bool {
         let emailFormat = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
@@ -285,11 +286,5 @@ func saveFaceToStorage(faceImage: UIImage, userId: String) {
                 }
             }
         }
-    }
-}
-
-struct RegistrationView_Previews: PreviewProvider {
-    static var previews: some View {
-        RegistrationView()
     }
 }
