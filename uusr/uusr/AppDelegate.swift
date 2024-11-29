@@ -1,6 +1,7 @@
 import UIKit
 import SwiftUI
 import FirebaseCore
+import Firebase
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
 

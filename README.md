@@ -1,55 +1,117 @@
-# User Simple Selfie Register
+# User Simple Selfie Register (UUSR)
 
-This is a SwiftUI-Based iOS application designed to register users with a photo and display client details in a list view. The app includes login functionality, client list view with sorting and searching, detailed client information with customizable statuses, and a new face recognition feature for enhanced client filtering.
+A SwiftUI-based iOS application that implements facial recognition for user authentication and management. The app provides a secure and efficient way to manage client information with face-based login capabilities.
+
+## Project Structure
+
+```
+uusr/
+├── uusr/
+│   ├── Views/
+│   │   ├── ContentView.swift         # Main view controller
+│   │   ├── LoginView.swift           # Login interface
+│   │   ├── RegistrationView.swift    # User registration
+│   │   ├── ClientListView.swift      # Client management list
+│   │   ├── PersonalDetailView.swift  # Detailed client information
+│   │   ├── HomePageView.swift        # Home dashboard
+│   │   ├── FaceCaptureView.swift     # Face capture interface
+│   ├── Models/
+│   │   ├── UserModel.swift           # User data model
+│   │   └── UserViewModel.swift       # User state management
+│   ├── Utilities/
+│   │   ├── ImagePicker.swift         # Image selection utility
+│   │   └── FaceRecognitionManager.swift # Face recognition handling
+```
+
 ## Features
-- **Login Page**: User can log in with an email and password
-- **Client List View**: Displays a list of clients with their photo, name, and address. User can sort by first name, last name, or unit number and search by name or address.
 
-- **Client Detail View**: Upon selecting a client, users are presented with more detailed information, including a larger photo, name, address, and other client-specific details
+### Authentication
+- Email/Password login
+- Face recognition authentication
+- User registration with selfie capture
 
-- **Status Update**: Allows users to set the status of each client, such as "Completed", "Refused", pr "Partial." Statues are updated locally and posted back to the server when feasible.
+### Client Management
+- Comprehensive client list view
+- Advanced search and filtering capabilities
+- Sort by:
+  - First name
+  - Last name
+  - Unit number
 
-- **Data Caching**: Client data is cached locally to prevent data loss and updated when possible
+### Status Tracking
+- Real-time status updates
+- Status categories:
+  - Completed
+  - Refused
+  - Partial
+  - Pending
+- Automatic synchronization with Firestore
 
-- **Face Recognition Integration**: Uses face recognition to enhance client vefication and filtering. Automatically matches client selfies against stored data to streamline verification and reduce manual checks
+### Face Recognition
+- Facial landmark detection
+- Biometric authentication
+- Secure face data storage
 
 ## Version Update
 - **Version 1.0**: Initial release with login functionality, client list view, client detail view, status updates, and data caching.
 - **Version 2.0**: Added face recognition functionality for enhanced client filtering and verification. Improved user experience and automated client verification process.
 
-## Installation
+### Core Technologies
+- SwiftUI
+- Firebase/Firestore
+- AVFoundation (Camera handling)
+- UIKit integration
+
+### Data Architecture
+- Observable object pattern
+- Real-time data synchronization
+- Local data caching
+- Secure credential storage
+
+## Getting Started
+
+### Prerequisites
+- Xcode 13.0+
+- iOS 15.0+
+- CocoaPods or Swift Package Manager
+- Firebase account
+
+### Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/Phil-CST-BCIT/UserSimpleSelfieRegister.git
-
-cd UserSimpleSelfieRegister
-
+git clone https://github.com/yourusername/uusr.git
 ```
-2. Open the project in Xcode:
+
+2. Install dependencies:
 ```bash
-open UserSimpleSelfieRegister
+cd uusr
+pod install  # If using CocoaPods
 ```
-3. Build and run the project in the simulator or on an iOS device.
 
-## Usage
-1. **Login**: Use test credentials (e.g., test@example.com / password) to log in.
-2. **View Clients**: After logging in, the app displays a list of clients. Scroll through the list to view client names, photos, and addresses.
-3. **Sort and Search**: Use the sort option to sort clients by first name, last name, or unit number. Use the search bar to filter clients by name or address.
-4. **View Client Details**: Tap on a client in the list to view their details, including a larger photo and full address information.
-5. **Update Status**: In the detail view, set the client's status, which is then stored locally and posted back when possible.
-6. **Face Recognition Filtering**: The app uses face recognition to automatically filter and verify clients based on their stored selfies. This improves the accuracy and efficiency of client management.
+3. Open `uusr.xcworkspace` in Xcode
 
-## Acknowledgments (BCIT bachelor of science in computer science)
-**Version 1.0** Developer
+4. Configure Firebase:
+   - Add your `GoogleService-Info.plist`
+   - Initialize Firebase in your app delegate
+
+5. Build and run the project
+
+## Development Team
+
+### Version 1.0
 - Parker Chen (parkerchen1123@outlook.com)
 - Jerry Zhang (zhangzhe941020@yahoo.com)
 - Phil Teng (https://github.com/Phil-CST-BCIT)
-##
-**Version 2.0** Developer
+
+### Version 2.0
 - Parker Chen (parkerchen1123@outlook.com)
-- Jerry Zhang (zhangzhe941020@yahoo.com) 
+- Jerry Zhang (zhangzhe941020@yahoo.com)
 
 ## License
 
-[MIT](https://choosealicense.com/licenses/mit/)
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+Developed as part of the Bachelor of Science in Computer Science program at British Columbia Institute of Technology (BCIT).

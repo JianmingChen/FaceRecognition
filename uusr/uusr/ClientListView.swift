@@ -254,4 +254,20 @@ struct ClientRowView: View {
             }
         }
     }
+    func validateSession(completion: @escaping (Bool) -> Void) {
+        guard let userId = currentUserDocumentID else {
+            completion(false)
+            return
+        }
+
+        let db = Firestore.firestore()
+        db.collection("users").document(userId).getDocument { document, error in
+            if let document = document, document.exists {
+                completion(true) // Valid session
+            } else {
+                completion(false) // Invalid session
+            }
+        }
+    }
+
 }
