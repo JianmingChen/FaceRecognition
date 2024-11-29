@@ -13,7 +13,7 @@ This is a SwiftUI-Based iOS application designed to register users with a photo 
 
 - **Face Recognition Integration**: Uses face recognition to enhance client vefication and filtering. Automatically matches client selfies against stored data to streamline verification and reduce manual checks
 
-##Version Update
+## Version Update
 - **Version 1.0**: Initial release with login functionality, client list view, client detail view, status updates, and data caching.
 - **Version 2.0**: Added face recognition functionality for enhanced client filtering and verification. Improved user experience and automated client verification process.
 
