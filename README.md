@@ -52,7 +52,9 @@ uusr/
 - Biometric authentication
 - Secure face data storage
 
-## Technical Implementation
+## Version Update
+- **Version 1.0**: Initial release with login functionality, client list view, client detail view, status updates, and data caching.
+- **Version 2.0**: Added face recognition functionality for enhanced client filtering and verification. Improved user experience and automated client verification process.
 
 ### Core Technologies
 - SwiftUI
