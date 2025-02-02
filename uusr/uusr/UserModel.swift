@@ -1,5 +1,4 @@
-import Foundation
-import UIKit
+import SwiftUI
 
 enum UserRole {
     case manager
@@ -15,6 +14,7 @@ enum Status: String, CaseIterable {
 
 class User: ObservableObject, Identifiable {
     let id = UUID()
+    @Published var firestoreDocumentID: String
     @Published var email: String
     @Published var password: String
     @Published var role: UserRole
@@ -23,19 +23,17 @@ class User: ObservableObject, Identifiable {
     @Published var unitNumber: String?
     @Published var buildingName: String?
     @Published var statusDictionary: [String: Bool]
-    @Published var faceImage: UIImage?
-    @Published var faceEncoding: [CGPoint]? // Added faceEncoding to store face landmarks
-
-    init(email: String, 
-         password: String, 
-         role: UserRole, 
-         firstName: String, 
-         lastName: String, 
-         unitNumber: String?, 
-         buildingName: String?, 
-         statusDictionary: [String: Bool] = [:], 
-         faceImage: UIImage? = nil, 
-         faceEncoding: [CGPoint]? = nil) { // Added faceEncoding to initializer
+    
+    init(firestoreDocumentID: String = "",
+         email: String,
+         password: String,
+         role: UserRole,
+         firstName: String,
+         lastName: String,
+         unitNumber: String? = nil,
+         buildingName: String? = nil,
+         statusDictionary: [String: Bool] = [:]) {
+        self.firestoreDocumentID = firestoreDocumentID
         self.email = email
         self.password = password
         self.role = role
@@ -44,7 +42,5 @@ class User: ObservableObject, Identifiable {
         self.unitNumber = unitNumber
         self.buildingName = buildingName
         self.statusDictionary = statusDictionary
-        self.faceImage = faceImage
-        self.faceEncoding = faceEncoding
     }
 }
