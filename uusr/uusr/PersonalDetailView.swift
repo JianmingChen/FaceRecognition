@@ -6,11 +6,6 @@ struct PersonalDetailView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            // Debugging: Print Firestore ID when the view loads
-            Text("Firestore ID: \(user.firestoreDocumentID)")
-                .onAppear {
-                    print("📌 PersonalDetailView loaded with Firestore ID: \(user.firestoreDocumentID)")
-                }
 
             // Profile Circle with Initial
             Circle()
