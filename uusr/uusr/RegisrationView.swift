@@ -164,38 +164,55 @@ struct RegistrationView: View {
     }
 
     func registerUser() {
-        guard let faceImage = capturedImage else {
-            faceVerificationStatus = "Please capture face image first"
-            return
-        }
-
+        // Create a unique user ID
         let userId = UUID().uuidString
 
-        FaceRecognitionManager.shared.encodeFace(from: faceImage, for: userId) { success, points in
-            DispatchQueue.main.async {
-                if success, let faceEncoding = points {
-                    let compressedEncoding = self.compressEncoding(faceEncoding)
-
-                    let newUser: [String: Any] = [
-                        "firstName": self.firstName,
-                        "lastName": self.lastName,
-                        "email": self.email,
-                        "password": self.password,
-                        "unitNumber": self.unitNumber,
-                        "buildingName": self.buildingName,
-                        "faceEncoding": compressedEncoding
-                    ]
-
-                    Firestore.firestore().collection("users").document(userId).setData(newUser) { error in
-                        if let error = error {
-                            self.faceVerificationStatus = "Failed to register user"
-                        } else {
-                            self.faceVerificationStatus = "User successfully registered"
-                            self.showSuccessAlert = true
-                        }
+        if let faceImage = capturedImage {
+            // If Face ID is provided, process it
+            FaceRecognitionManager.shared.encodeFace(from: faceImage, for: userId) { success, points in
+                DispatchQueue.main.async {
+                    if success, let faceEncoding = points {
+                        let compressedEncoding = self.compressEncoding(faceEncoding)
+                        
+                        // Register user with face encoding
+                        self.saveUserToFirestore(userId: userId, faceEncoding: compressedEncoding)
+                    } else {
+                        self.faceVerificationStatus = "Face encoding failed. Registering without Face ID."
+                        
+                        // Register user without face encoding
+                        self.saveUserToFirestore(userId: userId, faceEncoding: nil)
                     }
+                }
+            }
+        } else {
+            // Register user without Face ID
+            saveUserToFirestore(userId: userId, faceEncoding: nil)
+        }
+    }
+
+    func saveUserToFirestore(userId: String, faceEncoding: [Float]?) {
+        // Prepare user data
+        var newUser: [String: Any] = [
+            "firstName": self.firstName,
+            "lastName": self.lastName,
+            "email": self.email,
+            "password": self.password,
+            "unitNumber": self.unitNumber,
+            "buildingName": self.buildingName
+        ]
+        
+        if let faceEncoding = faceEncoding {
+            newUser["faceEncoding"] = faceEncoding
+        }
+        
+        // Save user to Firestore
+        Firestore.firestore().collection("users").document(userId).setData(newUser) { error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.faceVerificationStatus = "Failed to register user: \(error.localizedDescription)"
                 } else {
-                    self.faceVerificationStatus = "Face encoding failed"
+                    self.faceVerificationStatus = "User successfully registered"
+                    self.showSuccessAlert = true
                 }
             }
         }

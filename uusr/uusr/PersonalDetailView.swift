@@ -6,6 +6,12 @@ struct PersonalDetailView: View {
 
     var body: some View {
         VStack(spacing: 20) {
+            // Debugging: Print Firestore ID when the view loads
+            Text("Firestore ID: \(user.firestoreDocumentID)")
+                .onAppear {
+                    print("📌 PersonalDetailView loaded with Firestore ID: \(user.firestoreDocumentID)")
+                }
+
             // Profile Circle with Initial
             Circle()
                 .fill(Color.blue.opacity(0.2))
@@ -16,13 +22,13 @@ struct PersonalDetailView: View {
                         .fontWeight(.bold)
                         .foregroundColor(.blue)
                 )
-            
+
             // Full Name
             Text("\(user.firstName) \(user.lastName)")
                 .font(.title)
                 .fontWeight(.bold)
                 .padding(.top, 20)
-            
+
             // Email
             HStack {
                 Text("Email:")
@@ -32,7 +38,7 @@ struct PersonalDetailView: View {
             .padding()
             .background(Color(.secondarySystemBackground))
             .cornerRadius(10)
-            
+
             // Role
             HStack {
                 Text("Role:")
@@ -42,7 +48,7 @@ struct PersonalDetailView: View {
             .padding()
             .background(Color(.secondarySystemBackground))
             .cornerRadius(10)
-            
+
             // Unit Number
             if let unitNumber = user.unitNumber, !unitNumber.isEmpty {
                 HStack {
@@ -54,7 +60,7 @@ struct PersonalDetailView: View {
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(10)
             }
-            
+
             // Building Name
             if let buildingName = user.buildingName, !buildingName.isEmpty {
                 HStack {
@@ -79,9 +85,6 @@ struct PersonalDetailView: View {
                             get: { user.statusDictionary[status.rawValue] ?? false },
                             set: { isSelected in
                                 user.statusDictionary[status.rawValue] = isSelected
-                                // Cache the updated status locally
-                                saveStatusLocally(for: user)
-                                // Push to Firestore
                                 updateStatusInFirestore(for: user)
                             }
                         )) {
@@ -94,7 +97,7 @@ struct PersonalDetailView: View {
             .padding()
             .background(Color(.secondarySystemBackground))
             .cornerRadius(10)
-            
+
             Spacer()
         }
         .padding()
@@ -102,19 +105,25 @@ struct PersonalDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    func saveStatusLocally(for user: User) {
-        UserDefaults.standard.set(user.statusDictionary, forKey: "status_\(user.id.uuidString)")
-    }
-
+    // Function to update status in Firestore
     func updateStatusInFirestore(for user: User) {
         let db = Firestore.firestore()
-        db.collection("users").document(currentUserDocumentID ?? "").updateData([
+
+        print("🟡 Attempting to update Firestore for user: \(user.firestoreDocumentID)")
+        print("🟡 New status dictionary: \(user.statusDictionary)")
+
+        guard !user.firestoreDocumentID.isEmpty else {
+            print("❌ Error: User does not have a valid Firestore document ID")
+            return
+        }
+
+        db.collection("users").document(user.firestoreDocumentID).updateData([
             "status": user.statusDictionary
         ]) { error in
             if let error = error {
-                print("Error updating status: \(error)")
+                print("❌ Error updating status for user \(user.firestoreDocumentID): \(error.localizedDescription)")
             } else {
-                print("Status successfully updated for user: \(currentUserDocumentID ?? "N/A")")
+                print("✅ Status successfully updated for user: \(user.firestoreDocumentID)")
             }
         }
     }
