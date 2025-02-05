@@ -6,15 +6,21 @@ struct ClientRowView: View {
     var body: some View {
         VStack {
             HStack {
-                // Profile Image
-                Circle()
-                    .fill(Color.blue.opacity(0.2))
-                    .frame(width: 50, height: 50)
-                    .overlay(
-                        Text(String(user.firstName.prefix(1)))
-                            .fontWeight(.bold)
-                            .foregroundColor(.blue)
-                    )
+                
+                if user.photo != nil {
+                    Image(uiImage: user.photo!)
+                        .resizable()
+                        .frame(width: 50, height: 50)
+                }else{
+                    Circle()
+                        .fill(Color.blue.opacity(0.2))
+                        .frame(width: 50, height: 50)
+                        .overlay(
+                            Text(String(user.firstName.prefix(1)))
+                                .fontWeight(.bold)
+                                .foregroundColor(.blue)
+                        )
+                }
 
                 // User Details
                 VStack(alignment: .leading) {

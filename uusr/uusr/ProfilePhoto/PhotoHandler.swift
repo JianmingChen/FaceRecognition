@@ -12,11 +12,11 @@ func uploadImageForUser(image: UIImage, userID: String ) {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
         var body = Data()
-        let filename = "\(userID).jpg"
+        let filename = "\(userID)"
         let fieldName = "photo"
         
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(filename).jpg\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
         body.append(imageData)
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
@@ -36,7 +36,7 @@ func uploadImageForUser(image: UIImage, userID: String ) {
     
     
 func downloadImage(filename: String, completion: @escaping (UIImage?) -> Void) {
-    let url = URL(string: "http://localhost:3000/download/\(filename)")!
+    let url = URL(string: "http://localhost:3000/download/\(filename).jpg")!
     
     URLSession.shared.dataTask(with: url) { data, response, error in
         if let data = data, let image = UIImage(data: data) {

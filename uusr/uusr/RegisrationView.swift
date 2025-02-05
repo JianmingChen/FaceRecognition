@@ -216,10 +216,12 @@ struct RegistrationView: View {
                 }
             }
         }
+        let photoId = (newUser["email"] as! String).replacingOccurrences(of: ".com", with: "").replacingOccurrences(of: "@", with: "")
+        print(photoId)
         
         // Save photo of user to photo server
         guard let img = profileImage else { return }
-        uploadImageForUser(image: img, userID: userId)
+        uploadImageForUser(image: img, userID: photoId)
         
     }
 

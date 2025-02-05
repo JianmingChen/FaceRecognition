@@ -23,6 +23,7 @@ class User: ObservableObject, Identifiable {
     @Published var unitNumber: String?
     @Published var buildingName: String?
     @Published var statusDictionary: [String: Bool]
+    @Published var photo: UIImage?
     
     init(firestoreDocumentID: String = "",
          email: String,
@@ -42,5 +43,17 @@ class User: ObservableObject, Identifiable {
         self.unitNumber = unitNumber
         self.buildingName = buildingName
         self.statusDictionary = statusDictionary
+        print("trying to get image")
+        let photoId = email.replacingOccurrences(of: ".com", with: "").replacingOccurrences(of: "@", with: "")
+        downloadImage(filename: photoId) { img in
+                    DispatchQueue.main.async {
+                        self.photo = img
+                        print("Got image")
+                        print(self.photo)
+                    }
+                }
     }
+    
+    
 }
+
