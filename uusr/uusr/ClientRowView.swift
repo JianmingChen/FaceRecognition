@@ -6,21 +6,15 @@ struct ClientRowView: View {
     var body: some View {
         VStack {
             HStack {
-                
-                if user.photo != nil {
-                    Image(uiImage: user.photo!)
-                        .resizable()
-                        .frame(width: 50, height: 50)
-                }else{
-                    Circle()
-                        .fill(Color.blue.opacity(0.2))
-                        .frame(width: 50, height: 50)
-                        .overlay(
-                            Text(String(user.firstName.prefix(1)))
-                                .fontWeight(.bold)
-                                .foregroundColor(.blue)
-                        )
-                }
+                // Profile Image
+                Circle()
+                    .fill(Color.blue.opacity(0.2))
+                    .frame(width: 50, height: 50)
+                    .overlay(
+                        Text(String(user.firstName.prefix(1)))
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                    )
 
                 // User Details
                 VStack(alignment: .leading) {
@@ -42,6 +36,16 @@ struct ClientRowView: View {
                 }
 
                 Spacer()
+
+                // **New Tasks Button**
+                NavigationLink(destination: TaskView(user: user)) {
+                    Text("Tasks")
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
             }
             .padding()
         }
