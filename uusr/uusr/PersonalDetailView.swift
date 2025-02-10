@@ -8,15 +8,24 @@ struct PersonalDetailView: View {
         VStack(spacing: 20) {
 
             // Profile Circle with Initial
-            Circle()
-                .fill(Color.blue.opacity(0.2))
-                .frame(width: 100, height: 100)
-                .overlay(
-                    Text(String(user.firstName.prefix(1)))
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.blue)
-                )
+            if(user.photo == nil){
+                Circle()
+                    .fill(Color.blue.opacity(0.2))
+                    .frame(width: 100, height: 100)
+                    .overlay(
+                        Text(String(user.firstName.prefix(1)))
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                    )
+            } else {
+                Image(uiImage: user.photo!)
+                    .resizable()
+                    .frame(width: 100, height: 100)
+                    .clipShape(Circle())
+                    .shadow(radius: 5)
+            }
+                
 
             // Full Name
             Text("\(user.firstName) \(user.lastName)")
@@ -122,4 +131,10 @@ struct PersonalDetailView: View {
             }
         }
     }
+}
+
+//
+#Preview {
+    @Previewable @State var u = User(firestoreDocumentID: "9e40ec9a03610e06165f24c45184ab88", email: "", password: "", role: .individual, firstName: "hii", lastName: "guys")
+    PersonalDetailView(user: u)
 }

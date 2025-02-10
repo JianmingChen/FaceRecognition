@@ -11,7 +11,7 @@ struct RegistrationView: View {
     @State private var buildingName: String = ""
     @State private var password: String = ""
     @State private var showingImagePicker = false
-    @State private var profileImage: Image? = nil
+    @State private var profileImage: UIImage? = nil
     @State private var isEmailInvalid = false
     @State private var capturedImage: UIImage?
     @State private var showingFaceCapture = false
@@ -30,7 +30,7 @@ struct RegistrationView: View {
                     // Profile Image Section
                     VStack {
                         if profileImage != nil {
-                            profileImage?
+                            Image(uiImage: profileImage!)
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 100, height: 100)
@@ -216,6 +216,13 @@ struct RegistrationView: View {
                 }
             }
         }
+        let photoId = (newUser["email"] as! String).replacingOccurrences(of: ".com", with: "").replacingOccurrences(of: "@", with: "")
+        print(photoId)
+        
+        // Save photo of user to photo server
+        guard let img = profileImage else { return }
+        uploadImageForUser(image: img, userID: photoId)
+        
     }
 
     func isValidEmail(_ email: String) -> Bool {
