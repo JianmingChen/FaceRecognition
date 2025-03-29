@@ -20,10 +20,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 //        guard let _ = (scene as? UIWindowScene) else { return }
         guard let windowScene = scene as? UIWindowScene else { return }
                 
-        // 创建一个 SwiftUI 的 ContentView 作为主视图
+        // Create a SwiftUI ContentView as the main view
         let contentView = ContentView()
 
-        // 创建 UIWindow 并设置根视图为 ContentView
+        // Create UIWindow and set ContentView as root view
         let window = UIWindow(windowScene: windowScene)
         window.rootViewController = UIHostingController(rootView: contentView)
         self.window = window

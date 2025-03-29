@@ -85,8 +85,8 @@ class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutputSamp
     private var requestHandler: VNSequenceRequestHandler?
     private let faceDetectionRequest = VNDetectFaceRectanglesRequest()
     
-    var onFaceImageCaptured: ((UIImage) -> Void)?  // 回调给 LoginView
-    private var lastCaptureTime: Date = .distantPast  // 限频机制
+    var onFaceImageCaptured: ((UIImage) -> Void)?  // Callback to LoginView
+    private var lastCaptureTime: Date = .distantPast  // Rate limiting mechanism
     
     func checkPermissions() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -164,9 +164,9 @@ class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutputSamp
                 
                 latestBuffer = imageBuffer
 
-                // 防止过于频繁触发
+                // Prevent too frequent triggering
                 let now = Date()
-                if now.timeIntervalSince(lastCaptureTime) > 1.5 {  // 限制每1.5秒最多1次识别
+                if now.timeIntervalSince(lastCaptureTime) > 1.5 {  // Limit to one recognition per 1.5 seconds
                     lastCaptureTime = now
                     if mode == .login {
                         let uiImage = imageBufferToUIImage(imageBuffer: imageBuffer)

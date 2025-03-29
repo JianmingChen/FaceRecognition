@@ -165,24 +165,24 @@ struct RegistrationView: View {
     }
 
     func registerUser() {
-        // 创建唯一的用户ID
-        let userId = UUID().uuidString
+        // Create unique user ID
+        let userID = UUID().uuidString
 
         if let faceImage = capturedImage {
-            // 如果提供了面部照片，进行处理
+            // If face photo is provided, process it
             FaceRecognitionManager.shared.getEmbedding(from: faceImage) { embedding in
                 DispatchQueue.main.async {
                     if let faceEncoding = embedding {
-                        self.saveUserToFirestore(userId: userId, faceEncoding: faceEncoding)
+                        self.saveUserToFirestore(userId: userID, faceEncoding: faceEncoding)
                     } else {
                         self.faceVerificationStatus = "Face encoding failed. Registering without Face ID."
-                        self.saveUserToFirestore(userId: userId, faceEncoding: nil)
+                        self.saveUserToFirestore(userId: userID, faceEncoding: nil)
                     }
                 }
             }
         } else {
-            // 如果没有面部照片，直接注册
-            saveUserToFirestore(userId: userId, faceEncoding: nil)
+            // If no face photo, register directly
+            saveUserToFirestore(userId: userID, faceEncoding: nil)
         }
     }
 
