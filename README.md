@@ -29,6 +29,7 @@ uusr/
 - Email/Password login
 - Face recognition authentication
 - User registration with selfie capture
+- Secure face data storage with CoreML model
 
 ### Client Management
 - Comprehensive client list view
@@ -37,36 +38,58 @@ uusr/
   - First name
   - Last name
   - Unit number
+- Real-time client status updates
+- Detailed client profiles with personal information
 
-### Status Tracking
-- Real-time status updates
-- Status categories:
-  - Completed
-  - Refused
-  - Partial
-  - Pending
-- Automatic synchronization with Firestore
+### Task Management
+- Task creation and scheduling
+- Multiple task types:
+  - Medication reminders
+  - Vitals check
+  - House keeping
+  - Exercise
+  - Appointments
+- Recurring task support
+- Push notification reminders
+- Task status tracking (Active/Disabled)
+- YouTube video tutorials integration
 
 ### Face Recognition
 - Facial landmark detection
 - Biometric authentication
 - Secure face data storage
+- CoreML-based face embedding extraction
+- Cosine similarity matching
+- Real-time face verification
+
+### Data Management
+- Real-time Firestore synchronization
+- Local data caching
+- Secure credential storage
+- File upload/download capabilities
+- Profile photo management
 
 ## Version Update
 - **Version 1.0**: Initial release with login functionality, client list view, client detail view, status updates, and data caching.
 - **Version 2.0**: Added face recognition functionality for enhanced client filtering and verification. Improved user experience and automated client verification process.
+- **Version 2.1**: Added comprehensive task management system with notifications, YouTube integration, and enhanced face recognition capabilities.
 
 ### Core Technologies
 - SwiftUI
 - Firebase/Firestore
 - AVFoundation (Camera handling)
 - UIKit integration
+- CoreML for face recognition
+- UserNotifications framework
+- WebKit for video integration
 
 ### Data Architecture
 - Observable object pattern
 - Real-time data synchronization
 - Local data caching
 - Secure credential storage
+- CoreML model integration
+- Push notification system
 
 ## Getting Started
 
@@ -107,6 +130,14 @@ pod install  # If using CocoaPods
 ### Version 2.0
 - Parker Chen (parkerchen1123@outlook.com)
 - Jerry Zhang (zhangzhe941020@yahoo.com)
+
+### Version 3.0
+- Jerry Zhang (zhangzhe941020@yahoo.com)
+- skylerdev (Skyler2@mac.com)
+
+### Version 4.0
+- Jerry Zhang (zhangzhe941020@yahoo.com)
+
 
 ## License
 

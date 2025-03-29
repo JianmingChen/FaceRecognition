@@ -1,9 +1,17 @@
 import SwiftUI
 import AVFoundation
+import Vision
+
+enum FaceCaptureMode {
+    case login
+    case capture
+}
 
 struct FaceCaptureView: View {
     @Binding var capturedImage: UIImage?
-    var onCapture: (Bool) -> Void
+    var mode: FaceCaptureMode
+    var onFrameCaptured: ((UIImage) -> Void)?  // For login mode
+    var onCapture: ((Bool) -> Void)?           // For capture mode
     @Environment(\.presentationMode) var presentationMode
     @StateObject private var camera = CameraController()
     
@@ -15,24 +23,29 @@ struct FaceCaptureView: View {
                 
                 VStack {
                     Spacer()
+                    Text(camera.isFaceDetected ? "Face Detected" : "No Face Detected")
+                        .foregroundColor(camera.isFaceDetected ? .green : .red)
+                        .font(.title)
+                        .padding()
                     
-                    Button(action: {
-                        camera.capturePhoto { image in
-                            capturedImage = image
-                            onCapture(true)
-                            presentationMode.wrappedValue.dismiss()
+                    if mode == .capture {
+                        Button(action: {
+                            if let buffer = camera.latestBuffer {
+                                let image = camera.imageBufferToUIImage(imageBuffer: buffer)
+                                capturedImage = image
+                                onCapture?(true)
+                                presentationMode.wrappedValue.dismiss()
+                            }
+                        }) {
+                            Text("Capture")
+                                .padding()
+                                .frame(width: 120)
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
                         }
-                    }) {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 70, height: 70)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.black, lineWidth: 2)
-                                    .frame(width: 60, height: 60)
-                            )
+                        .padding(.bottom, 30)
                     }
-                    .padding(.bottom, 30)
                 }
             } else {
                 if let error = camera.error {
@@ -45,35 +58,35 @@ struct FaceCaptureView: View {
             }
         }
         .onAppear {
+            camera.mode = mode
+            camera.onFaceImageCaptured = { image in
+                if mode == .login {
+                    capturedImage = image
+                    onFrameCaptured?(image)
+                }
+            }
             camera.checkPermissions()
+        }
+        .onDisappear {
+            camera.stopCamera()
         }
     }
 }
 
-class CameraController: ObservableObject {
+class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     @Published var isSetupComplete = false
     @Published var error: Error?
-    var session: AVCaptureSession?
-    private var output: AVCapturePhotoOutput?
-    private var completion: ((UIImage?) -> Void)?
-    private var captureDelegate: PhotoCaptureDelegate?
+    @Published var isFaceDetected = false
     
-    private class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
-        private let completion: (UIImage?) -> Void
-        
-        init(completion: @escaping (UIImage?) -> Void) {
-            self.completion = completion
-        }
-        
-        func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-            guard let imageData = photo.fileDataRepresentation(),
-                  let image = UIImage(data: imageData) else {
-                completion(nil)
-                return
-            }
-            completion(image)
-        }
-    }
+    var latestBuffer: CVImageBuffer?
+    var mode: FaceCaptureMode = .login
+    var session: AVCaptureSession?
+    private var output: AVCaptureVideoDataOutput?
+    private var requestHandler: VNSequenceRequestHandler?
+    private let faceDetectionRequest = VNDetectFaceRectanglesRequest()
+    
+    var onFaceImageCaptured: ((UIImage) -> Void)?  // 回调给 LoginView
+    private var lastCaptureTime: Date = .distantPast  // 限频机制
     
     func checkPermissions() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -99,7 +112,7 @@ class CameraController: ObservableObject {
             }
         }
     }
-    
+
     private func setupCamera() {
         do {
             let session = AVCaptureSession()
@@ -110,7 +123,7 @@ class CameraController: ObservableObject {
             }
             
             let input = try AVCaptureDeviceInput(device: device)
-            let output = AVCapturePhotoOutput()
+            let output = AVCaptureVideoDataOutput()
             
             if session.canAddInput(input) && session.canAddOutput(output) {
                 session.addInput(input)
@@ -119,6 +132,9 @@ class CameraController: ObservableObject {
                 
                 self.session = session
                 self.output = output
+                
+                output.setSampleBufferDelegate(self, queue: DispatchQueue(label: "cameraQueue"))
+                self.requestHandler = VNSequenceRequestHandler()
                 
                 DispatchQueue.main.async {
                     self.isSetupComplete = true
@@ -134,17 +150,53 @@ class CameraController: ObservableObject {
             }
         }
     }
-    
-    func capturePhoto(completion: @escaping (UIImage?) -> Void) {
-        guard let output = output else {
-            completion(nil)
-            return
+
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+
+        do {
+            try requestHandler?.perform([faceDetectionRequest], on: imageBuffer)
+            
+            if let results = faceDetectionRequest.results, !results.isEmpty {
+                DispatchQueue.main.async {
+                    self.isFaceDetected = true
+                }
+                
+                latestBuffer = imageBuffer
+
+                // 防止过于频繁触发
+                let now = Date()
+                if now.timeIntervalSince(lastCaptureTime) > 1.5 {  // 限制每1.5秒最多1次识别
+                    lastCaptureTime = now
+                    if mode == .login {
+                        let uiImage = imageBufferToUIImage(imageBuffer: imageBuffer)
+                        DispatchQueue.main.async {
+                            self.onFaceImageCaptured?(uiImage)
+                        }
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.isFaceDetected = false
+                }
+            }
+        } catch {
+            print("Face detection error: \(error.localizedDescription)")
         }
-        
-        self.completion = completion
-        let settings = AVCapturePhotoSettings()
-        self.captureDelegate = PhotoCaptureDelegate(completion: completion)
-        output.capturePhoto(with: settings, delegate: captureDelegate!)
+    }
+
+    func stopCamera() {
+        session?.stopRunning()
+        session = nil
+    }
+
+    func imageBufferToUIImage(imageBuffer: CVImageBuffer) -> UIImage {
+        let ciImage = CIImage(cvImageBuffer: imageBuffer)
+        let context = CIContext()
+        if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
+            return UIImage(cgImage: cgImage)
+        }
+        return UIImage()
     }
 }
 
@@ -164,4 +216,4 @@ struct CameraPreview: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: UIView, context: Context) {}
-} 
+}

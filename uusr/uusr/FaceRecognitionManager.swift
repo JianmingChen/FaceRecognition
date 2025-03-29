@@ -1,64 +1,72 @@
 import Vision
+import CoreML
 import UIKit
 
 class FaceRecognitionManager {
     static let shared = FaceRecognitionManager()
 
-    private var faceEncodings: [String: [CGPoint]] = [:]
+    private var model: VNCoreMLModel?
 
-    private init() {}
+    private init() {
+        do {
+            let mlModel = try FaceAuth(configuration: MLModelConfiguration()) // Load FaceAuth.mlmodel
+            model = try VNCoreMLModel(for: mlModel.model) // Convert to VNCoreMLModel
+        } catch {
+            print("Error loading model: \(error)")
+        }
+    }
 
-    /// Encodes a face from a given image and stores it with a user ID.
-    func encodeFace(from image: UIImage, for userId: String, completion: @escaping (Bool, [CGPoint]?) -> Void) {
+    // Use Core ML model to extract face embedding
+    func getEmbedding(from image: UIImage, completion: @escaping ([Float]?) -> Void) {
         guard let cgImage = image.cgImage else {
             print("Image conversion to CGImage failed.")
-            completion(false, nil)
+            completion(nil)
             return
         }
 
         DispatchQueue.global(qos: .userInitiated).async {
             let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            let faceDetectionRequest = VNDetectFaceLandmarksRequest { request, error in
+            let request = VNCoreMLRequest(model: self.model!) { request, error in
                 guard error == nil,
-                      let observations = request.results as? [VNFaceObservation],
-                      let firstFace = observations.first,
-                      let landmarks = firstFace.landmarks,
-                      let allPoints = landmarks.allPoints else {
-                    print("Face detection or landmarks extraction failed.")
-                    completion(false, nil)
+                      let observations = request.results as? [VNCoreMLFeatureValueObservation],
+                      let firstFace = observations.first else {
+                    print("Error during face encoding.")
+                    completion(nil)
                     return
                 }
 
-                let points = self.normalizedPoints(from: allPoints, boundingBox: firstFace.boundingBox)
-                DispatchQueue.main.async {
-                    self.faceEncodings[userId] = points
-                    print("Face encoded successfully for user: \(userId)")
-                    completion(true, points)
+                // Get the embedding
+                if let embedding = firstFace.featureValue.multiArrayValue {
+                    // Extract values from MLMultiArray
+                    var faceEncoding: [Float] = []
+                    for i in 0..<embedding.count {
+                        let value = embedding[i].floatValue
+                        faceEncoding.append(value)
+                    }
+                    DispatchQueue.main.async {
+                        print("Face encoding successful.")
+                        completion(faceEncoding) // Return the embedding
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        print("No face encoding found.")
+                        completion(nil)
+                    }
                 }
             }
 
             do {
-                try requestHandler.perform([faceDetectionRequest])
+                try requestHandler.perform([request])
             } catch {
-                print("Error performing face detection request: \(error.localizedDescription)")
+                print("Error performing face encoding request: \(error.localizedDescription)")
                 DispatchQueue.main.async {
-                    completion(false, nil)
+                    completion(nil)
                 }
             }
         }
     }
 
-    /// Normalizes facial landmark points based on the bounding box.
-    private func normalizedPoints(from points: VNFaceLandmarkRegion2D, boundingBox: CGRect) -> [CGPoint] {
-        return points.normalizedPoints.map { point in
-            CGPoint(
-                x: boundingBox.origin.x + point.x * boundingBox.size.width,
-                y: boundingBox.origin.y + point.y * boundingBox.size.height
-            )
-        }
-    }
-
-    /// Calculates similarity between two sets of face encodings.
+    // Calculate similarity between two embeddings
     func calculateSimilarity(metrics1: [Float], metrics2: [Float]) -> Float {
         guard metrics1.count == metrics2.count else { return 0 }
 
@@ -69,5 +77,19 @@ class FaceRecognitionManager {
         }
 
         return 1 - (totalDistance / Float(metrics1.count)) // Normalize similarity
+    }
+
+    // Cosine similarity between two vectors
+    func cosineSimilarity(a: [Float], b: [Float]) -> Float {
+        let dotProduct = zip(a, b).map(*).reduce(0, +)
+        let magnitudeA = sqrt(a.map { $0 * $0 }.reduce(0, +))
+        let magnitudeB = sqrt(b.map { $0 * $0 }.reduce(0, +))
+
+        // To avoid division by zero, we ensure that magnitude is not zero
+        if magnitudeA == 0 || magnitudeB == 0 {
+            return 0
+        }
+
+        return dotProduct / (magnitudeA * magnitudeB)  // Cosine similarity
     }
 }

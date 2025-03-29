@@ -3,6 +3,7 @@ import Firebase
 import FirebaseFirestore
 
 struct RegistrationView: View {
+    @EnvironmentObject var userViewModel: UserViewModel
     @Environment(\.presentationMode) var presentationMode
     @State private var firstName: String = ""
     @State private var lastName: String = ""
@@ -71,11 +72,11 @@ struct RegistrationView: View {
                         .foregroundColor(.blue)
                     }
                     .sheet(isPresented: $showingFaceCapture) {
-                        FaceCaptureView(capturedImage: $capturedImage) { success in
+                        FaceCaptureView(capturedImage: $capturedImage, mode: .capture, onCapture: { success in
                             if success {
                                 verifyFace()
                             }
-                        }
+                        })
                     }
                 }
                 .padding(.bottom, 20)
@@ -164,28 +165,23 @@ struct RegistrationView: View {
     }
 
     func registerUser() {
-        // Create a unique user ID
+        // 创建唯一的用户ID
         let userId = UUID().uuidString
 
         if let faceImage = capturedImage {
-            // If Face ID is provided, process it
-            FaceRecognitionManager.shared.encodeFace(from: faceImage, for: userId) { success, points in
+            // 如果提供了面部照片，进行处理
+            FaceRecognitionManager.shared.getEmbedding(from: faceImage) { embedding in
                 DispatchQueue.main.async {
-                    if success, let faceEncoding = points {
-                        let compressedEncoding = self.compressEncoding(faceEncoding)
-                        
-                        // Register user with face encoding
-                        self.saveUserToFirestore(userId: userId, faceEncoding: compressedEncoding)
+                    if let faceEncoding = embedding {
+                        self.saveUserToFirestore(userId: userId, faceEncoding: faceEncoding)
                     } else {
                         self.faceVerificationStatus = "Face encoding failed. Registering without Face ID."
-                        
-                        // Register user without face encoding
                         self.saveUserToFirestore(userId: userId, faceEncoding: nil)
                     }
                 }
             }
         } else {
-            // Register user without Face ID
+            // 如果没有面部照片，直接注册
             saveUserToFirestore(userId: userId, faceEncoding: nil)
         }
     }
@@ -238,9 +234,9 @@ struct RegistrationView: View {
             return
         }
         
-        FaceRecognitionManager.shared.encodeFace(from: image, for: "tempUser") { success, points in
+        FaceRecognitionManager.shared.getEmbedding(from: image) { embedding in
             DispatchQueue.main.async {
-                faceVerificationStatus = success ? "Face verification successful" : "Face verification failed"
+                faceVerificationStatus = embedding != nil ? "Face verification successful" : "Face verification failed"
             }
         }
     }

@@ -10,7 +10,7 @@ struct LoginView: View {
     @State private var showingFaceScanner = false
     @State private var capturedImage: UIImage?
     @EnvironmentObject var userViewModel: UserViewModel
-
+    
     var body: some View {
         VStack(spacing: 20) {
             Text("User Selfie Register")
@@ -57,11 +57,13 @@ struct LoginView: View {
                     .cornerRadius(10)
             }
             .sheet(isPresented: $showingFaceScanner) {
-                FaceCaptureView(capturedImage: $capturedImage) { success in
-                    if success, let image = capturedImage {
+                FaceCaptureView(
+                    capturedImage: $capturedImage,
+                    mode: .login,
+                    onFrameCaptured: { image in
                         authenticateWithFace(image: image)
                     }
-                }
+                )
             }
             
             Button(action: { showRegistration.toggle() }) {
@@ -119,9 +121,10 @@ struct LoginView: View {
                 return
             }
 
-            FaceRecognitionManager.shared.encodeFace(from: image, for: "tempUser") { success, points in
+            // Extract the face embedding from the captured image
+            FaceRecognitionManager.shared.getEmbedding(from: image) { embedding in
                 DispatchQueue.main.async {
-                    guard success, let capturedMetrics = points?.map({ Float($0.x + $0.y) }) else {
+                    guard let capturedMetrics = embedding else {
                         print("Face encoding failed for login.")
                         self.isLoginFailed = true
                         return
@@ -130,12 +133,14 @@ struct LoginView: View {
                     var bestMatch: String?
                     var highestSimilarity: Float = 0
 
+                    // Compare with stored user face embeddings
                     for document in documents {
                         let data = document.data()
                         if let storedMetrics = data["faceEncoding"] as? [Float] {
-                            let similarity = FaceRecognitionManager.shared.calculateSimilarity(metrics1: capturedMetrics, metrics2: storedMetrics)
-                            print("Similarity with user \(document.documentID): \(similarity)")
+                            let similarity = FaceRecognitionManager.shared.cosineSimilarity(a: capturedMetrics, b: storedMetrics)
+                            print("Similarity with user \(document.documentID): \(similarity)")  // Print similarity
 
+                            // If similarity is higher than the previous one, update best match
                             if similarity > highestSimilarity {
                                 highestSimilarity = similarity
                                 bestMatch = document.documentID
@@ -143,12 +148,13 @@ struct LoginView: View {
                         }
                     }
 
-                    if let matchedUserId = bestMatch, highestSimilarity > 0.45 {
+                    // Apply the threshold for the highest similarity
+                    if let matchedUserId = bestMatch, highestSimilarity >= 0.80 {
                         print("Face recognition successful for user ID: \(matchedUserId)")
                         self.isLoginFailed = false
                         userViewModel.isLoggedIn = true
                     } else {
-                        print("No matching face found.")
+                        print("No matching face found or similarity below threshold.")
                         self.isLoginFailed = true
                     }
                 }
